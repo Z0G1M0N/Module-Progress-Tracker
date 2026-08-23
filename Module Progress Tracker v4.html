@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Question Log — JEE progress tracker</title>
+<style>
+:root{
+  --ink:#0e1218; --ink-2:#141a23; --ink-3:#1b232e;
+  --rule:#26303d; --rule-soft:#1e2732;
+  --text:#e7edf5; --text-2:#93a3b8; --text-3:#5f7086;
+  --ok:#3ecf8e; --no:#ff5f6d; --flag:#ffb03a; --hw:#7aa2ff;
+  --math:#a78bfa; --phys:#4cc9f0; --chem:#ffa94d;
+  --accent:var(--math); --r:10px;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  background-image:linear-gradient(rgba(255,255,255,.020) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.020) 1px,transparent 1px);
+  background-size:26px 26px;
+  color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.45;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 110px}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(14,18,24,.93);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule-soft)}
+.topbar-in{max-width:1080px;margin:0 auto;padding:9px 16px;display:flex;align-items:center;gap:10px}
+.crumbs{display:flex;align-items:center;flex-wrap:nowrap;gap:2px;font-family:var(--mono);font-size:12.5px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none}
+.crumbs::-webkit-scrollbar{display:none}
+.crumb{padding:3px 6px;border-radius:5px;color:var(--text-2);white-space:nowrap}
+.crumb:hover{background:var(--ink-3);color:var(--text)}
+.crumb.here{color:var(--text);cursor:default}
+.crumb.here:hover{background:none}
+.sep{color:var(--text-3);padding:0 1px}
+.tool{display:flex;align-items:center;gap:7px;flex:none;border:1px solid var(--rule);background:var(--ink-2);padding:6px 12px;border-radius:99px;font-size:13px;font-weight:600;white-space:nowrap}
+.tool:hover{border-color:var(--accent)}
+.tool.on{border-color:var(--hw);color:var(--hw)}
+.dot{width:7px;height:7px;border-radius:99px;background:var(--text-3)}
+.dot.on{background:var(--flag);box-shadow:0 0 0 3px rgba(255,176,58,.16)}
+.badge{font-family:var(--mono);font-size:11px;background:var(--hw);color:#0a1020;border-radius:99px;padding:1px 6px;font-weight:700}
+
+/* headings */
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 6px}
+h1{font-size:27px;line-height:1.15;letter-spacing:-.02em;margin:0 0 4px;font-weight:700}
+h2{font-size:19px;letter-spacing:-.01em;margin:0;font-weight:650}
+.sub{color:var(--text-2);font-size:13.5px;margin:0 0 20px}
+.pagehead{padding-top:26px;border-bottom:1px solid var(--rule-soft);padding-bottom:22px;margin-bottom:30px}
+.pagehead .row-between{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* cards */
+.grid{display:grid;gap:20px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.card{display:block;width:100%;text-align:left;background:var(--ink-2);border:1px solid var(--rule-soft);border-radius:var(--r);padding:20px;transition:border-color .12s,transform .12s}
+.card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.card-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.card-title{font-size:17px;font-weight:650;letter-spacing:-.01em}
+.card-note{color:var(--text-3);font-size:12.5px;font-family:var(--mono);margin-top:14px;line-height:1.85}
+.pct{font-family:var(--mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent)}
+.pct.zero{color:var(--text-3)}
+.tagx{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);border:1px solid var(--rule);border-radius:4px;padding:1px 5px;margin-left:8px;vertical-align:middle}
+.subj{position:relative;overflow:hidden;padding:24px 22px 22px}
+.subj .bar{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.subj h2{font-size:22px}
+.subj .meta{font-family:var(--mono);font-size:12px;color:var(--text-3);margin-top:2px}
+.rail{height:5px;border-radius:99px;background:var(--ink-3);overflow:hidden;margin-top:14px}
+.rail > i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.ex .card-title{font-size:16px}
+.ex-sub{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-top:2px}
+.mosaic{display:flex;flex-wrap:wrap;gap:2.5px;margin:16px 0 4px}
+.cell{width:7px;height:7px;border-radius:1.5px;background:var(--ink-3)}
+.cell.c{background:var(--ok)} .cell.w{background:var(--no)} .cell.d{background:var(--text-3)}
+.cell.f{box-shadow:inset 0 0 0 1.5px var(--flag)}
+.stats{display:flex;gap:18px;margin-top:14px;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--text-2);flex-wrap:wrap}
+.stats b{font-weight:600;color:var(--text)}
+.stats .k{color:var(--text-3);letter-spacing:.05em}
+
+/* toolbar */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px;background:var(--ink-2);border:1px solid var(--rule-soft);border-radius:var(--r);margin-bottom:14px}
+.field{display:flex;align-items:center;gap:6px}
+.field label,.blabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
+select,.tin{background:var(--ink-3);border:1px solid var(--rule);border-radius:7px;padding:6px 9px;font-size:13px}
+.tin{min-width:0}
+.spacer{flex:1}
+.bulk{display:flex;gap:8px;flex-wrap:wrap}
+.tbtn{border:1px solid var(--rule);border-radius:7px;padding:6px 11px;font-size:13px;font-weight:550;background:var(--ink-3)}
+.tbtn:hover{border-color:var(--accent)}
+.tbtn.warn:hover{border-color:var(--flag);color:var(--flag)}
+
+/* answer sheet */
+.sheet{border:1px solid var(--rule-soft);border-radius:var(--r);background:var(--ink-2);user-select:none}
+.sheet > :first-child{border-radius:var(--r) var(--r) 0 0}
+.sheet > :last-child{border-radius:0 0 var(--r) var(--r)}
+.row{display:grid;grid-template-columns:66px 62px 96px minmax(120px,1fr) 74px 92px;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--rule-soft);position:relative}
+.row:first-child{border-top:none}
+.head{border-top:none;background:var(--ink-3);font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);position:sticky;top:var(--topbar-h,52px);z-index:5;padding-top:9px;padding-bottom:9px}
+.row.done{background:rgba(62,207,142,.035)}
+.row.sel{background:rgba(122,162,255,.16)}
+.row.hw::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--hw)}
+.qn{font-family:var(--mono);font-size:13px;color:var(--text-3);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:5px;cursor:grab}
+.row.sel .qn,.sheet.dragging .qn{cursor:grabbing}
+.row.done .qn{color:var(--text-2)}
+.qn i{font-style:normal;font-size:8.5px;letter-spacing:.08em;color:var(--hw);border:1px solid rgba(122,162,255,.45);border-radius:3px;padding:0 3px}
+.check{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--rule);display:grid;place-items:center;font-size:13px;color:transparent}
+.check:hover{border-color:var(--text-2)}
+.check.on{background:var(--ok);border-color:var(--ok);color:#08150f}
+.bub{display:flex;gap:5px}
+.bub button{width:26px;height:26px;border-radius:99px;border:1.5px solid var(--rule);display:grid;place-items:center;font-size:13px;line-height:1;color:var(--text-3)}
+.bub button:hover{border-color:var(--text-2);color:var(--text-2)}
+.bub .c.on{background:var(--ok);border-color:var(--ok);color:#08150f}
+.bub .w.on{background:var(--no);border-color:var(--no);color:#20060a}
+.note{width:100%;background:transparent;border:none;border-bottom:1px solid var(--rule-soft);padding:4px 2px;font-size:13px;color:var(--text-2);user-select:text}
+.note::placeholder{color:#3d4b5c}
+.note:focus{outline:none;border-bottom-color:var(--accent);color:var(--text)}
+.flag{border:1.5px solid var(--rule);border-radius:7px;padding:3px 8px;font-size:11.5px;font-family:var(--mono);letter-spacing:.06em;color:var(--text-3)}
+.flag:hover{border-color:var(--text-2)}
+.flag.on{border-color:var(--flag);color:var(--flag);background:rgba(255,176,58,.1)}
+.stars{display:flex;gap:3px}
+.stars button{font-size:17px;line-height:1;color:#333f4d;padding:1px}
+.stars button:hover{color:var(--flag)}
+.stars button.on{color:var(--flag)}
+.empty{padding:34px 16px;text-align:center;color:var(--text-3);font-size:14px}
+.hint{font-family:var(--mono);font-size:11.5px;color:var(--text-3);margin-top:10px}
+
+/* selection bar */
+.selbar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;background:var(--ink-3);border:1px solid var(--rule);border-radius:12px;padding:10px 12px;box-shadow:0 12px 40px rgba(0,0,0,.55);width:max-content;max-width:calc(100vw - 24px)}
+.selbar[hidden]{display:none}
+.selbar .n{font-family:var(--mono);font-size:12px;color:var(--hw);padding-right:4px;white-space:nowrap}
+
+/* homework */
+.branch{border-left:1px solid var(--rule-soft);margin-left:9px;padding-left:16px}
+.node{display:flex;align-items:center;gap:8px;padding:7px 0}
+.twisty{width:20px;height:20px;border-radius:5px;border:1px solid var(--rule);display:grid;place-items:center;font-size:10px;color:var(--text-2);flex:none}
+.twisty:hover{border-color:var(--accent)}
+.node .nm{font-size:14px;font-weight:600}
+.node .lv{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
+.hwitem{background:var(--ink-2);border:1px solid var(--rule-soft);border-radius:9px;padding:13px 14px;margin:8px 0}
+.hwitem.warnbox{border-color:rgba(255,176,58,.5)}
+.hwhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.hwhead .loc{font-size:14px;font-weight:600}
+.hwhead .rng{font-family:var(--mono);font-size:12px;color:var(--text-3)}
+.hwhead .prog{font-family:var(--mono);font-size:12px;color:var(--hw);margin-left:auto}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:var(--mono);font-size:11.5px;min-width:34px;padding:4px 6px;border-radius:6px;border:1px solid var(--rule);color:var(--text-3);background:var(--ink-3);font-variant-numeric:tabular-nums}
+.chip:hover{border-color:var(--text-2);color:var(--text-2)}
+.chip.d{border-color:var(--text-3);color:var(--text-2)}
+.chip.c{background:var(--ok);border-color:var(--ok);color:#08150f;font-weight:700}
+.chip.w{background:var(--no);border-color:var(--no);color:#20060a;font-weight:700}
+.warntext{color:var(--flag);font-size:12.5px;font-family:var(--mono);margin-top:9px}
+.x{color:var(--text-3);font-size:16px;line-height:1;padding:2px 5px;border-radius:5px}
+.x:hover{color:var(--no);background:rgba(255,95,109,.1)}
+.hwform{background:var(--ink-2);border:1px solid var(--rule-soft);border-radius:var(--r);padding:16px;margin-bottom:26px}
+.hwrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.plusbtn{width:32px;height:32px;border-radius:8px;border:1px dashed var(--rule);color:var(--text-2);font-size:17px;display:grid;place-items:center;flex:none}
+.plusbtn:hover{border-color:var(--hw);color:var(--hw);border-style:solid}
+.plusbtn:disabled{opacity:.35;cursor:not-allowed}
+
+/* floating add */
+.fab{position:fixed;left:20px;bottom:20px;z-index:55;width:48px;height:48px;border-radius:99px;background:var(--accent);color:#0b0f14;font-size:24px;font-weight:600;display:grid;place-items:center;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+.fab:hover{filter:brightness(1.1)}
+.fabmenu{position:fixed;left:20px;bottom:78px;z-index:56;background:var(--ink-3);border:1px solid var(--rule);border-radius:11px;padding:6px;min-width:212px;box-shadow:0 12px 40px rgba(0,0,0,.55)}
+.fabmenu[hidden]{display:none}
+.fabmenu button{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:7px;font-size:13.5px}
+.fabmenu button:hover{background:var(--ink-2)}
+.fabmenu button.danger{color:var(--no)}
+.fabmenu .grp{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:7px 11px 4px}
+
+/* modal */
+.veil{position:fixed;inset:0;background:rgba(6,9,13,.72);display:grid;place-items:center;padding:16px;z-index:100}
+.veil[hidden]{display:none}
+.modal{background:var(--ink-2);border:1px solid var(--rule);border-radius:14px;padding:20px;width:min(560px,100%);max-height:86vh;overflow:auto}
+.modal h3{margin:0 0 6px;font-size:18px;letter-spacing:-.01em}
+.modal p{margin:0 0 14px;color:var(--text-2);font-size:13.5px}
+.modal textarea,.modal input[type=text],.modal input[type=number]{width:100%;background:var(--ink);border:1px solid var(--rule);border-radius:8px;padding:10px;font-size:14px;color:var(--text);resize:vertical}
+.modal textarea{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.btn{border:1px solid var(--rule);background:var(--ink-3);border-radius:8px;padding:8px 14px;font-size:13.5px;font-weight:600}
+.btn:hover{border-color:var(--text-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#0b0f14}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--no);border-color:rgba(255,95,109,.4)}
+.btn.danger:hover{background:rgba(255,95,109,.12);border-color:var(--no)}
+.block{margin-bottom:18px}
+.blabel{margin-bottom:7px}
+.msg{font-size:12.5px;margin-top:8px;font-family:var(--mono)}
+.msg.good{color:var(--ok)} .msg.bad{color:var(--no)} .msg.warn{color:var(--flag)}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);background:var(--ink-3);border:1px solid var(--rule);border-radius:99px;padding:9px 18px;font-size:13px;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.toast[hidden]{display:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text-3);margin-top:18px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:8px;height:8px;border-radius:2px;display:block}
+
+@media (max-width:860px){
+  .g3,.g2{grid-template-columns:1fr}
+  .grid{gap:14px}
+  .card{padding:16px}
+}
+@media (max-width:720px){
+  .row{grid-template-columns:auto auto 1fr auto;grid-template-areas:"qn note note note" "chk bub stars flag";row-gap:10px;column-gap:10px;padding:11px 12px}
+  .row .qn{grid-area:qn}
+  .row .c-chk{grid-area:chk}
+  .row .c-bub{grid-area:bub}
+  .row .c-note{grid-area:note}
+  .row .c-stars{grid-area:stars;justify-self:start;margin-left:4px}
+  .row .c-flag{grid-area:flag;justify-self:end}
+  .head{display:none}
+  .toolbar{gap:10px}
+  .toolbar .spacer{display:none}
+  .bulk{flex-basis:100%}
+  .bulk .tbtn{flex:1 1 auto}
+  h1{font-size:23px}
+  .topbar-in{padding:8px 12px;gap:8px}
+  .tool{padding:6px 10px;font-size:12px}
+  .wrap{padding:0 12px 110px}
+  .branch{padding-left:11px;margin-left:6px}
+  .selbar{bottom:12px;gap:6px;padding:9px}
+  .selbar .tbtn{font-size:12px;padding:6px 9px}
+  .fab{left:14px;bottom:14px}
+  .fabmenu{left:14px;bottom:70px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <nav class="crumbs" id="crumbs"></nav>
+    <button class="tool" id="authBtn">
+      <span class="dot on" style="background:var(--phys)"></span>
+      <span id="authName">Sign In</span>
+    </button>
+    <a class="tool" id="hwBtn" href="#/hw">Homework<span class="badge" id="hwBadge" hidden>0</span></a>
+    <button class="tool" id="openSave"><span class="dot" id="dirtyDot"></span>Save</button>
+  </div>
+</div>
+
+<main class="wrap" id="app"></main>
+
+<button class="fab" id="fab" title="Add">+</button>
+<div class="fabmenu" id="fabmenu" hidden></div>
+<div class="selbar" id="selbar" hidden></div>
+<div class="veil" id="veil" hidden><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<!-- Firebase Cloud Integration -->
+<!-- Firebase Cloud Integration -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } 
+  from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } 
+  from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY", // <-- Replace with your Firebase API Key
+  authDomain: "module-status-tracker.firebaseapp.com",
+  projectId: "module-status-tracker",
+  storageBucket: "module-status-tracker.firebasestorage.app",
+  messagingSenderId: "83124152676",
+  appId: "1:83124152676:web:2a0612c48493bc84233271",
+  measurementId: "G-FDKV3JM1MW"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+window.currentUser = null;
+let cloudTimer = null;
+
+// Debounced Cloud Save
+window.triggerCloudSave = function() {
+  if (!window.currentUser) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(async () => {
+    try {
+      const code = makeCode();
+      await setDoc(doc(db, "users", window.currentUser.uid), {
+        saveCode: code,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      markClean();
+      toast("Cloud synced");
+    } catch (err) {
+      console.error("Cloud save failed:", err);
+    }
+  }, 1200);
+};
+
+// Cloud Load with Timestamp Guard
+window.cloudLoad = async function() {
+  if (!window.currentUser) return;
+  try {
+    const snap = await getDoc(doc(db, "users", window.currentUser.uid));
+    if (snap.exists() && snap.data().saveCode) {
+      const parsed = readCode(snap.data().saveCode);
+      
+      // If local data exists and is newer than cloud data, sync local up instead of overwriting
+      if (S.savedAt && parsed.at && S.savedAt > parsed.at) {
+        window.triggerCloudSave();
+        return;
+      }
+
+      S.d = parsed.d;
+      S.n = parsed.n;
+      S.x = parsed.x || newCustom();
+      S.h = parsed.h || [];
+      S.savedAt = parsed.at;
+      if (typeof buildTree === "function") buildTree();
+      markClean();
+      LS.set("qlog.backup", makeCode());
+      render();
+      toast("Cloud data restored");
+    } else {
+      // First time logging in: save existing local progress to cloud
+      window.triggerCloudSave();
+    }
+  } catch (err) {
+    console.error("Cloud load failed:", err);
+    toast("Failed to load cloud backup");
+  }
+};
+
+// Auth State Monitor
+onAuthStateChanged(auth, async (user) => {
+  window.currentUser = user;
+  const authBtn = document.getElementById("authBtn");
+  const authName = document.getElementById("authName");
+  if (user) {
+    if (authName) authName.textContent = user.displayName ? user.displayName.split(" ")[0] : "Sync On";
+    if (authBtn) authBtn.classList.add("on");
+    await window.cloudLoad();
+  } else {
+    if (authName) authName.textContent = "Sign In";
+    if (authBtn) authBtn.classList.remove("on");
+  }
+});
+
+// Direct UI Event Binding (No DOMContentLoaded delay needed)
+const authBtn = document.getElementById("authBtn");
+if (authBtn) {
+  authBtn.addEventListener("click", () => {
+    if (!window.currentUser) {
+      signInWithPopup(auth, new GoogleAuthProvider()).catch(err => {
+        console.error("Auth popup error:", err);
+        toast("Sign-in cancelled");
+      });
+    } else {
+      if (confirm("Log out of Cloud Sync? Your local changes will remain on this device.")) {
+        signOut(auth);
+      }
+    }
+  });
+}
+</script>
+
+<script>
+"use strict";
+
+
+
+/* ============================================================
+   1. BUILT-IN SYLLABUS
+   [chapter no, name, intext units, ex1, ex2, ex3, ex4, main, adv]
+   Intext questions = intext units x 10. A 0 hides that exercise.
+   ============================================================ */
+const BUILTIN = {
+  M:{name:"Mathematics", short:"Math", accent:"#a78bfa", modules:{
+    1:[[1,"Basic Mathematics",7,55,55,0,0,6,0],
+       [2,"Logarithms",4,30,30,15,30,8,7],
+       [3,"Sequence and Series",6,90,70,15,60,23,15],
+       [4,"Trigonometric Ratios and Identities",4,90,60,15,70,19,9],
+       [5,"Trigonometric Equations",2,40,50,10,55,18,15],
+       [6,"Solution of Triangles",2,50,50,15,65,10,15],
+       [7,"Straight Lines",6,110,110,15,70,20,6]],
+    2:[[8,"Sets and Relations",1,55,10,0,0,16,1],
+       [9,"Quadratic Equations",5,80,80,15,70,18,13],
+       [10,"Complex Numbers",5,90,90,15,80,20,27],
+       [11,"Permutations and Combinations",5,60,80,15,65,19,18],
+       [12,"Binomial Theorem",4,60,70,15,65,19,13]]
+  }},
+  P:{name:"Physics", short:"Physics", accent:"#4cc9f0", modules:{
+    1:[[1,"Mathematics For Physics",7,110,110,15,0,8,40],
+       [2,"Units, Dimensions and Measurement",3,70,40,15,35,17,18],
+       [3,"Kinematics",8,65,80,15,75,22,18],
+       [4,"Newton's Laws of Motion",5,45,45,15,45,16,5],
+       [5,"Friction",3,40,45,10,65,17,8],
+       [6,"Circular Motion",3,35,30,10,45,16,5]],
+    2:[[7,"Work, Power and Energy",5,45,45,15,60,22,16],
+       [8,"Centre of Mass and Conservation of Momentum",4,35,50,15,60,23,15],
+       [9,"Rotational Dynamics",5,65,65,15,60,25,29],
+       [10,"Gravitation",6,45,45,15,20,20,17],
+       [11,"Fluids",3,60,40,15,45,17,17],
+       [12,"Simple Harmonic Motion",5,70,60,15,65,20,22]]
+  }},
+  C:{name:"Chemistry", short:"Chem", accent:"#ffa94d", modules:{
+    1:[[1,"Mole Concept",5,70,50,15,60,18,5],
+       [2,"Atomic Structure",8,70,55,15,70,17,14],
+       [3,"Periodic Structure",6,60,50,15,60,17,4],
+       [4,"Chemical Bonding",9,70,50,15,70,24,17],
+       [5,"Redox Reactions",4,55,45,15,50,15,9],
+       [6,"Gaseous State",6,50,60,15,60,11,15]],
+    2:[[7,"Thermodynamics",8,70,70,15,65,20,24],
+       [8,"Chemical Equilibrium",5,55,50,15,55,18,8],
+       [9,"Ionic Equilibrium",7,60,55,15,65,18,14],
+       [10,"IUPAC Nomenclature",5,60,55,15,55,10,7],
+       [11,"Isomerism",5,60,55,15,75,17,13]]
+  }}
+};
+const BUILT_EX = [
+  {code:"I", name:"Intext Exercises", tag:"In-chapter", i:2, mult:10},
+  {code:"1", name:"Exercise 1", tag:"Basics", i:3},
+  {code:"2", name:"Exercise 2", tag:"Harder", i:4},
+  {code:"3", name:"Exercise 3", tag:"Numericals", i:5},
+  {code:"4", name:"Exercise 4", tag:"Difficult", i:6},
+  {code:"M", name:"JEE Main PYQs", tag:"Past paper", i:7},
+  {code:"A", name:"JEE Advanced PYQs", tag:"Past paper", i:8}
+];
+const PALETTE = ["#63e6be","#f783ac","#ffd43b","#9775fa","#4dabf7","#ff922b","#69db7c","#e599f7"];
+
+/* ============================================================
+   2. STATE
+   Question value = 6 bits: done | result(2) | review | stars(2)
+   S.d["P91"]  -> per-question values      S.n["P91.4"] -> note
+   S.x         -> everything the user added themselves
+   S.h         -> homework items
+   ============================================================ */
+const S = { d:{}, n:{}, x:newCustom(), h:[], dirty:false, savedAt:null, closed:{} };
+function newCustom(){ return {subs:[], mods:{}, chs:{}, exs:{}, cnt:{}, ren:{}}; }
+
+const isDone = v => v & 1;
+const result = v => (v>>1) & 3;
+const isFlag = v => (v>>3) & 1;
+const stars  = v => (v>>4) & 3;
+const setDone   = (v,x) => (v & ~1) | (x?1:0);
+const setResult = (v,x) => (v & ~6) | ((x&3)<<1);
+const setFlag   = (v,x) => (v & ~8) | (x?8:0);
+const setStars  = (v,x) => (v & ~48) | ((x&3)<<4);
+
+const key = (s,no,code) => s + no + code;
+
+/* ============================================================
+   3. THE TREE  (built-in + user additions, rebuilt on every change)
+   ============================================================ */
+let TREE = null;
+
+function buildTree(){
+  TREE = {order:[], subjects:{}};
+
+  for(const code of ["M","P","C"]){
+    const b = BUILTIN[code];
+    const sub = {code, name:S.x.ren["s:"+code] || b.name, short:b.short, accent:b.accent, custom:false, modules:{}, order:[]};
+    for(let m=1;m<=6;m++){
+      sub.modules[m] = {id:m, name:S.x.ren["m:"+code+":"+m] || ("Module "+m), custom:false, chapters:[]};
+      sub.order.push(m);
+      (b.modules[m]||[]).forEach(rowToChapter(code, sub.modules[m]));
+    }
+    TREE.subjects[code] = sub; TREE.order.push(code);
+  }
+
+  S.x.subs.forEach(cs=>{
+    TREE.subjects[cs.code] = {code:cs.code, name:cs.name, short:cs.name, accent:cs.accent, custom:true, modules:{}, order:[]};
+    TREE.order.push(cs.code);
+  });
+
+  for(const sc of TREE.order){
+    const sub = TREE.subjects[sc];
+    (S.x.mods[sc]||[]).forEach(cm=>{
+      sub.modules[cm.id] = {id:cm.id, name:cm.name, custom:true, chapters:[]};
+      sub.order.push(cm.id);
+    });
+    for(const mid of sub.order){
+      (S.x.chs[sc+"|"+mid]||[]).forEach(cc=>{
+        sub.modules[mid].chapters.push({no:cc.no, name:cc.name, custom:true, mod:mid, exs:[]});
+      });
+    }
+    for(const mid of sub.order){
+      sub.modules[mid].chapters.forEach(ch=>{
+        (S.x.exs[sc+"|"+ch.no]||[]).forEach(ce=>{
+          ch.exs.push({code:ce.code, name:ce.name, tag:"Added by you", custom:true});
+        });
+      });
+    }
+  }
+  return TREE;
+}
+function rowToChapter(sc, mod){
+  return row=>{
+    const ch = {no:row[0], name:S.x.ren["c:"+sc+":"+row[0]] || row[1], custom:false, mod:mod.id, exs:[]};
+    BUILT_EX.forEach(e=>{
+      const base = row[e.i] * (e.mult||1);
+      ch.exs.push({code:e.code, name:S.x.ren["e:"+sc+":"+ch.no+":"+e.code] || e.name, tag:e.tag, custom:false, base});
+    });
+    mod.chapters.push(ch);
+  };
+}
+
+const subjOf = sc => TREE.subjects[sc];
+const modOf  = (sc,m) => { const s = subjOf(sc); return s && s.modules[m]; };
+function chapOf(sc, no){
+  const s = subjOf(sc); if(!s) return null;
+  for(const m of s.order){ const c = s.modules[m].chapters.find(c=>c.no===Number(no)); if(c) return c; }
+  return null;
+}
+const exOf = (sc,ch,code) => ch && ch.exs.find(e=>e.code===code);
+
+/* a question count can be overridden by the user, for built-in exercises too */
+function qCount(sc, ch, code){
+  const k = key(sc, ch.no, code);
+  if(S.x.cnt[k] !== undefined) return S.x.cnt[k];
+  const e = exOf(sc, ch, code);
+  return e ? (e.base || 0) : 0;
+}
+/* exercises worth showing: built-ins with questions, plus anything the user added */
+function exList(sc, ch){ return ch.exs.filter(e => e.custom || qCount(sc,ch,e.code) > 0); }
+function allChapters(sc){
+  const s = subjOf(sc); if(!s) return [];
+  let out=[]; s.order.forEach(m=>{ out = out.concat(s.modules[m].chapters); }); return out;
+}
+
+function arrFor(sc,no,code,len){
+  const k = key(sc,no,code);
+  if(!S.d[k] || S.d[k].length!==len){
+    const old = S.d[k] || [], next = new Array(len).fill(0);
+    for(let i=0;i<Math.min(old.length,len);i++) next[i]=old[i];
+    S.d[k]=next;
+  }
+  return S.d[k];
+}
+
+/* stats */
+const blank = () => ({n:0,done:0,correct:0,wrong:0,flag:0});
+function addTo(a,b){ a.n+=b.n;a.done+=b.done;a.correct+=b.correct;a.wrong+=b.wrong;a.flag+=b.flag; return a; }
+function exStats(sc,ch,code){
+  const n = qCount(sc,ch,code), st = blank(); st.n = n;
+  const a = S.d[key(sc,ch.no,code)]; if(!a) return st;
+  for(let i=0;i<n;i++){ const v=a[i]||0;
+    if(isDone(v)) st.done++;
+    const r=result(v); if(r===1) st.correct++; else if(r===2) st.wrong++;
+    if(isFlag(v)) st.flag++; }
+  return st;
+}
+function chapStats(sc,ch){ const t=blank(); exList(sc,ch).forEach(e=>addTo(t,exStats(sc,ch,e.code))); return t; }
+function modStats(sc,m){ const t=blank(); const mo=modOf(sc,m); if(mo) mo.chapters.forEach(c=>addTo(t,chapStats(sc,c))); return t; }
+function subjStats(sc){ const t=blank(); const s=subjOf(sc); if(s) s.order.forEach(m=>addTo(t,modStats(sc,m))); return t; }
+const pct = st => st.n ? Math.round(st.done/st.n*100) : 0;
+const acc = st => (st.correct+st.wrong) ? Math.round(st.correct/(st.correct+st.wrong)*100) : null;
+
+/* ============================================================
+   4. HOMEWORK
+   item = {id, s, c, e, r:"20-30,45"}  — ticks live in S.d, so both
+   dashboards are the same data seen from two places.
+   ============================================================ */
+function parseRange(str, max){
+  const out = [], bad = [];
+  const parts = String(str).split(",").map(p=>p.trim()).filter(Boolean);
+  if(!parts.length) return {list:[], error:"Type a question range, like 20-30."};
+  for(const p of parts){
+    const m = p.match(/^(\d+)\s*(?:[-–—to]+\s*(\d+))?$/i);
+    if(!m) return {list:[], error:'"'+p+'" is not a range. Use 20-30, or 12, or 20-30, 45.'};
+    let a = parseInt(m[1],10), b = m[2] ? parseInt(m[2],10) : a;
+    if(a>b) { const t=a; a=b; b=t; }
+    if(a < 1) return {list:[], error:"Question numbers start at 1."};
+    if(b > max) bad.push(p);
+    for(let i=a;i<=b;i++) out.push(i-1);
+  }
+  if(bad.length) return {list:[], error:"This exercise has "+max+" questions, so "+bad.join(", ")+" is outside it."};
+  return {list:[...new Set(out)].sort((x,y)=>x-y), error:null};
+}
+function toRange(idx){
+  if(!idx.length) return "";
+  const s = [...idx].sort((a,b)=>a-b), out=[]; let a=s[0], p=s[0];
+  for(let i=1;i<=s.length;i++){
+    if(i<s.length && s[i]===p+1){ p=s[i]; continue; }
+    out.push(a===p ? String(a+1) : (a+1)+"-"+(p+1));
+    a=s[i]; p=s[i];
+  }
+  return out.join(",");
+}
+/* indices an item points at, plus whether it now falls outside the exercise */
+function hwResolve(it){
+  const sub = subjOf(it.s), ch = sub ? chapOf(it.s, it.c) : null;
+  const ex  = ch ? exOf(it.s, ch, it.e) : null;
+  if(!sub || !ch || !ex) return {missing:true, list:[], sub, ch, ex, n:0};
+  const n = qCount(it.s, ch, it.e);
+  const raw = parseRange(it.r, Number.MAX_SAFE_INTEGER).list;
+  const list = raw.filter(i=>i<n);
+  return {missing:false, over:raw.length-list.length, list, sub, ch, ex, n};
+}
+function hwStats(it){
+  const r = hwResolve(it); if(r.missing) return {done:0,total:0,r};
+  const a = S.d[key(it.s,it.c,it.e)] || [];
+  let done=0; r.list.forEach(i=>{ if(isDone(a[i]||0)) done++; });
+  return {done, total:r.list.length, r};
+}
+function hwTotals(){
+  let done=0, total=0;
+  S.h.forEach(it=>{ const s=hwStats(it); done+=s.done; total+=s.total; });
+  return {done, total, left: total-done};
+}
+/* which question indices in one exercise are homework */
+function hwIndexSet(sc,no,code){
+  const set = new Set();
+  S.h.forEach(it=>{ if(it.s===sc && String(it.c)===String(no) && it.e===code)
+    hwResolve(it).list.forEach(i=>set.add(i)); });
+  return set;
+}
+
+/* ============================================================
+   5. SAVE CODE
+   v2|ts|data|notes|meta|checksum          (v1 codes still load)
+   ============================================================ */
+const A64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-.";
+function fingerprint(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h<<5)+h+str.charCodeAt(i))>>>0; return h.toString(36); }
+
+function makeCode(){
+  const segs=[];
+  Object.keys(S.d).sort().forEach(k=>{
+    const a=S.d[k]; if(!a.some(v=>v)) return;
+    let out="",i=0;
+    while(i<a.length){ let j=i; while(j<a.length && a[j]===a[i]) j++;
+      const run=j-i; out += A64[a[i]] + (run>1 ? run : ""); i=j; }
+    segs.push(k+":"+out);
+  });
+  const notes=[];
+  Object.keys(S.n).sort().forEach(k=>{ const v=S.n[k]; if(v && v.trim()) notes.push(k+"="+encodeURIComponent(v)); });
+  const meta = encodeURIComponent(JSON.stringify({x:S.x, h:S.h}));
+  const body = "v2|"+Date.now().toString(36)+"|"+segs.join(";")+"|"+notes.join(";")+"|"+meta;
+  return "JEE-"+btoa(body+"|"+fingerprint(body));
+}
+
+function readCode(raw){
+  let code = (raw||"").trim().replace(/\s+/g,"");
+  if(!code) throw new Error("Paste a code first.");
+  if(code.startsWith("JEE-")) code = code.slice(4);
+  let body;
+  try{ body = atob(code); }catch(e){ throw new Error("That is not a valid code. Check that you copied all of it."); }
+  const cut = body.lastIndexOf("|");
+  if(cut < 0) throw new Error("That is not a valid code.");
+  const payload = body.slice(0,cut), sum = body.slice(cut+1);
+  if(fingerprint(payload) !== sum) throw new Error("This code is damaged or was cut off. Paste the whole code, with nothing added.");
+  const f = payload.split("|");
+  if(f[0] !== "v1" && f[0] !== "v2") throw new Error("This code was made by a different version of the tracker.");
+
+  const d={}, n={};
+  if(f[2]) f[2].split(";").forEach(seg=>{
+    const p = seg.indexOf(":"); if(p<0) return;
+    const k = seg.slice(0,p), bd = seg.slice(p+1), arr=[]; let i=0;
+    while(i<bd.length){
+      const val = A64.indexOf(bd[i]); i++;
+      if(val<0) throw new Error("This code is damaged.");
+      let num=""; while(i<bd.length && bd[i]>="0" && bd[i]<="9"){ num+=bd[i]; i++; }
+      const run = num ? parseInt(num,10) : 1;
+      if(!(run>0) || run>100000) throw new Error("This code is damaged.");
+      for(let r=0;r<run;r++) arr.push(val);
+    }
+    d[k]=arr;
+  });
+  if(f[3]) f[3].split(";").forEach(seg=>{
+    const p = seg.indexOf("="); if(p<0) return;
+    n[seg.slice(0,p)] = decodeURIComponent(seg.slice(p+1));
+  });
+  let x = newCustom(), h = [];
+  if(f[0]==="v2" && f[4]){
+    try{
+      const meta = JSON.parse(decodeURIComponent(f[4]));
+      if(meta.x) x = Object.assign(newCustom(), meta.x);
+      if(Array.isArray(meta.h)) h = meta.h;
+    }catch(e){ throw new Error("This code is damaged."); }
+  }
+  return {d, n, x, h, at:new Date(parseInt(f[1],36))};
+}
+
+const LS = {
+  get(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+};
+let backupTimer=null;
+function markDirty(){
+  S.dirty = true;
+  document.getElementById("dirtyDot").classList.add("on");
+  clearTimeout(backupTimer);
+  backupTimer = setTimeout(()=>{ LS.set("qlog.backup", makeCode()); }, 600);
+  if (typeof window.triggerCloudSave === "function") window.triggerCloudSave();
+}
+function markClean(){ S.dirty=false; document.getElementById("dirtyDot").classList.remove("on"); }
+
+/* ============================================================
+   6. ROUTING
+   ============================================================ */
+const route = () => { const p = location.hash.replace(/^#\/?/,"").split("/").filter(Boolean); return {s:p[0], m:p[1], c:p[2], e:p[3]}; };
+window.addEventListener("hashchange", render);
+
+const app = document.getElementById("app");
+const esc = t => String(t).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+function sizeTopbar(){ document.documentElement.style.setProperty("--topbar-h", document.querySelector(".topbar").offsetHeight+"px"); }
+window.addEventListener("resize", sizeTopbar);
+
+function setAccent(sc){
+  const s = sc && subjOf(sc);
+  document.documentElement.style.setProperty("--accent", s ? s.accent : "#a78bfa");
+}
+function crumbs(parts){
+  const el = document.getElementById("crumbs");
+  el.innerHTML = parts.map((p,i)=>{
+    const last = i===parts.length-1;
+    return (i?'<span class="sep">\\</span>':"") + (last
+      ? `<span class="crumb here">${esc(p.label)}</span>`
+      : `<a class="crumb" href="${p.href}">${esc(p.label)}</a>`);
+  }).join("");
+  el.scrollLeft = 0; sizeTopbar();
+}
+function statLine(st){
+  const a = acc(st);
+  return `<div class="stats">
+    <span><span class="k">done</span> <b>${st.done}</b>/${st.n}</span>
+    <span><span class="k">correct</span> <b>${a===null?"—":a+"%"}</b></span>
+    <span><span class="k">review</span> <b>${st.flag}</b></span></div>`;
+}
+function refreshHwBadge(){
+  const t = hwTotals(), el = document.getElementById("hwBadge");
+  el.hidden = t.left <= 0; el.textContent = t.left;
+  document.getElementById("hwBtn").classList.toggle("on", t.left > 0);
+}
+
+let VIEW = {name:"home"};
+
+function render(){
+  if(!TREE) buildTree();
+  clearSelection(true);
+  closeFabMenu();
+  const r = route();
+  window.scrollTo(0,0);
+  refreshHwBadge();
+
+  if(r.s === "hw"){ VIEW={name:"hw"}; setAccent(null); return viewHomework(); }
+  if(!r.s || !subjOf(r.s)){ VIEW={name:"home"}; return viewHome(); }
+  setAccent(r.s);
+  if(!r.m){ VIEW={name:"subject", s:r.s}; return viewSubject(r.s); }
+  if(!modOf(r.s, r.m)){ VIEW={name:"subject", s:r.s}; return viewSubject(r.s); }
+  if(!r.c){ VIEW={name:"module", s:r.s, m:Number(r.m)}; return viewModule(r.s, Number(r.m)); }
+  const ch = chapOf(r.s, r.c);
+  if(!ch){ VIEW={name:"subject", s:r.s}; return viewSubject(r.s); }
+  if(!r.e || !exOf(r.s, ch, r.e)){ VIEW={name:"chapter", s:r.s, m:Number(r.m), c:ch.no}; return viewChapter(r.s, Number(r.m), ch); }
+  VIEW = {name:"exercise", s:r.s, m:Number(r.m), c:ch.no, e:r.e};
+  return viewExercise(r.s, Number(r.m), ch, r.e);
+}
+
+/* --- home --- */
+function viewHome(){
+  setAccent(null);
+  crumbs([{label:"Home"}]);
+  const cards = TREE.order.map(sc=>{
+    const st = subjStats(sc), d = subjOf(sc);
+    return `<a class="card subj" href="#/${sc}" style="--accent:${d.accent}">
+      <span class="bar"></span>
+      <div class="card-top"><h2>${esc(d.name)}${d.custom?'<span class="tagx">yours</span>':""}</h2><span class="pct ${pct(st)?"":"zero"}">${pct(st)}%</span></div>
+      <div class="meta">${allChapters(sc).length} chapters · ${st.n} questions</div>
+      <div class="rail"><i style="width:${pct(st)}%"></i></div>
+      ${statLine(st)}</a>`;
+  }).join("");
+  const t = hwTotals();
+  app.innerHTML = `
+    <div class="pagehead">
+      <div class="eyebrow">Question log</div>
+      <h1>Every question you have solved, in one place.</h1>
+      <p class="sub">Progress lives only in this page. Press <strong>Save</strong> when you finish, copy the code somewhere safe, and paste it back next time to pick up where you left off.</p>
+    </div>
+    ${t.total ? `<a class="card" href="#/hw" style="margin-bottom:20px">
+        <div class="card-top"><span class="card-title">Homework</span><span class="pct">${t.total?Math.round(t.done/t.total*100):0}%</span></div>
+        <div class="rail"><i style="width:${t.total?Math.round(t.done/t.total*100):0}%"></i></div>
+        <div class="stats"><span><span class="k">questions left</span> <b>${t.left}</b></span>
+          <span><span class="k">lists</span> <b>${S.h.length}</b></span></div></a>` : ""}
+    <div class="grid g3">${cards}</div>
+    <div class="legend">
+      <span><i style="background:var(--ok)"></i> correct</span>
+      <span><i style="background:var(--no)"></i> wrong</span>
+      <span><i style="background:var(--text-3)"></i> solved, not marked</span>
+      <span><i style="box-shadow:inset 0 0 0 1.5px var(--flag);background:var(--ink-3)"></i> marked for review</span>
+      <span><i style="background:var(--hw)"></i> homework</span>
+    </div>
+    <div class="hint">Use + at the bottom left to add your own subject.</div>`;
+}
+
+/* --- subject --- */
+function viewSubject(sc){
+  const d = subjOf(sc);
+  crumbs([{label:"Home",href:"#/"},{label:d.short}]);
+  const cards = d.order.map(m=>{
+    const mo = d.modules[m], st = modStats(sc,m);
+    const inner = mo.chapters.length
+      ? `<div class="rail"><i style="width:${pct(st)}%"></i></div>
+         <div class="card-note">${mo.chapters.map(c=>esc(c.no+". "+c.name)).join("<br>")}</div>`
+      : `<div class="card-note">No chapters yet — open it and press + to add one.</div>`;
+    return `<a class="card" href="#/${sc}/${m}">
+      <div class="card-top"><span class="card-title">${esc(mo.name)}${mo.custom?'<span class="tagx">yours</span>':""}</span>
+      ${mo.chapters.length?`<span class="pct ${pct(st)?"":"zero"}">${pct(st)}%</span>`:""}</div>
+      ${inner}</a>`;
+  }).join("");
+  app.innerHTML = `<div class="pagehead"><div class="eyebrow">Subject</div>
+      <h1>${esc(d.name)}</h1>${statLine(subjStats(sc))}</div>
+    <div class="grid g2">${cards}</div>`;
+}
+
+/* --- module --- */
+function viewModule(sc,m){
+  const d = subjOf(sc), mo = modOf(sc,m);
+  crumbs([{label:"Home",href:"#/"},{label:d.short,href:`#/${sc}`},{label:mo.name}]);
+  const cards = mo.chapters.map(c=>{
+    const st = chapStats(sc,c);
+    return `<a class="card" href="#/${sc}/${m}/${c.no}">
+      <div class="card-top"><span class="card-title">${c.no}. ${esc(c.name)}${c.custom?'<span class="tagx">yours</span>':""}</span><span class="pct ${pct(st)?"":"zero"}">${pct(st)}%</span></div>
+      <div class="rail"><i style="width:${pct(st)}%"></i></div>${statLine(st)}</a>`;
+  }).join("");
+  app.innerHTML = `<div class="pagehead"><div class="eyebrow">${esc(d.name)}</div>
+      <h1>${esc(mo.name)}</h1>${statLine(modStats(sc,m))}</div>
+    ${cards ? `<div class="grid g2">${cards}</div>`
+            : `<div class="empty">No chapters here yet. Press + at the bottom left to add one.</div>`}`;
+}
+
+/* --- chapter --- */
+function viewChapter(sc,m,ch){
+  const d = subjOf(sc), mo = modOf(sc,m);
+  crumbs([{label:"Home",href:"#/"},{label:d.short,href:`#/${sc}`},{label:mo.name,href:`#/${sc}/${m}`},{label:ch.no+". "+ch.name}]);
+  const list = exList(sc,ch);
+  const cards = list.map(e=>{
+    const n = qCount(sc,ch,e.code), st = exStats(sc,ch,e.code);
+    const a = S.d[key(sc,ch.no,e.code)] || [];
+    let cells="";
+    for(let i=0;i<n;i++){ const v=a[i]||0, r=result(v);
+      let cls = r===1?"c":r===2?"w":isDone(v)?"d":"";
+      if(isFlag(v)) cls+=" f";
+      cells += `<i class="cell ${cls}"></i>`; }
+    return `<a class="card ex" href="#/${sc}/${m}/${ch.no}/${e.code}">
+      <div class="card-top"><div><span class="card-title">${esc(e.name)}${e.custom?'<span class="tagx">yours</span>':""}</span>
+        <div class="ex-sub">${esc(e.tag)} · ${n?n+" questions":"no questions set"}</div></div>
+        ${n?`<span class="pct ${pct(st)?"":"zero"}">${pct(st)}%</span>`:""}</div>
+      ${n?`<div class="mosaic">${cells}</div>${statLine(st)}`
+         :`<div class="card-note">Open it to say how many questions it has.</div>`}</a>`;
+  }).join("");
+  app.innerHTML = `<div class="pagehead"><div class="eyebrow">${esc(d.name)} · ${esc(mo.name)}</div>
+      <h1>${ch.no}. ${esc(ch.name)}</h1>${statLine(chapStats(sc,ch))}</div>
+    ${cards ? `<div class="grid g2">${cards}</div>`
+            : `<div class="empty">No exercises here yet. Press + at the bottom left to add one.</div>`}`;
+}
+
+/* ============================================================
+   7. EXERCISE SHEET
+   ============================================================ */
+let filter = {status:"all", star:"all", sort:"num"};
+let order = [];                  // question indices in display order
+let sel = new Set();             // drag selection
+let ctx = null;                  // {sc, ch, code, arr, n, hw}
+
+function viewExercise(sc,m,ch,code){
+  const d = subjOf(sc), mo = modOf(sc,m), ex = exOf(sc,ch,code);
+  crumbs([{label:"Home",href:"#/"},{label:d.short,href:`#/${sc}`},{label:mo.name,href:`#/${sc}/${m}`},
+          {label:ch.no+". "+ch.name,href:`#/${sc}/${m}/${ch.no}`},{label:ex.name}]);
+  const n = qCount(sc,ch,code);
+
+  if(n === 0){
+    app.innerHTML = `<div class="pagehead"><div class="eyebrow">${esc(ch.no+". "+ch.name)}</div>
+        <h1>${esc(ex.name)}</h1><p class="sub">This exercise has no questions yet.</p></div>
+      <div class="hwform"><div class="blabel">How many questions are in this exercise?</div>
+        <div class="hwrow"><input class="tin" id="qn" type="number" min="1" max="2000" placeholder="e.g. 56" style="width:140px">
+        <button class="btn primary" id="qnGo">Create the table</button></div>
+        <div class="msg bad" id="qnMsg"></div></div>`;
+    const go = ()=>{
+      const v = parseInt(document.getElementById("qn").value,10);
+      if(!(v>0 && v<=2000)){ document.getElementById("qnMsg").textContent = "Type a number between 1 and 2000."; return; }
+      S.x.cnt[key(sc,ch.no,code)] = v; markDirty(); render(); toast(v+" questions ready");
+    };
+    document.getElementById("qnGo").onclick = go;
+    document.getElementById("qn").onkeydown = e=>{ if(e.key==="Enter") go(); };
+    return;
+  }
+
+  const arr = arrFor(sc,ch.no,code,n);
+  ctx = {sc, ch, code, arr, n, hw:hwIndexSet(sc,ch.no,code)};
+
+  app.innerHTML = `
+    <div class="pagehead">
+      <div class="eyebrow">${esc(ch.no+". "+ch.name)} · ${esc(ex.tag)}</div>
+      <h1>${esc(ex.name)}</h1>
+      <div id="exStats">${statLine(exStats(sc,ch,code))}</div>
+    </div>
+    <div class="toolbar">
+      <div class="field"><label for="fStatus">Show</label><select id="fStatus">
+        <option value="all">Everything</option><option value="todo">Not solved</option>
+        <option value="done">Solved</option><option value="correct">Correct</option>
+        <option value="wrong">Wrong</option><option value="flag">Marked for review</option>
+        <option value="hw">Homework</option></select></div>
+      <div class="field"><label for="fStar">Stars</label><select id="fStar">
+        <option value="all">Any</option><option value="3">3 stars</option>
+        <option value="2">2 stars</option><option value="1">1 star</option>
+        <option value="0">No stars</option></select></div>
+      <div class="field"><label for="fSort">Order</label><select id="fSort">
+        <option value="num">Question number</option><option value="starDesc">Stars, high to low</option>
+        <option value="starAsc">Stars, low to high</option></select></div>
+      <span class="spacer"></span>
+      <div class="bulk">
+        <button class="tbtn warn" id="allDone">Mark all solved</button>
+        <button class="tbtn warn" id="allCorrect">Mark all correct</button>
+        <button class="tbtn warn" id="clearEx">Clear exercise</button>
+      </div>
+    </div>
+    <div class="sheet" id="sheet"></div>
+    <div class="hint">Drag down the list to select a run of questions, then tick them together or send them to homework.</div>`;
+
+  document.getElementById("fStatus").value = filter.status;
+  document.getElementById("fStar").value = filter.star;
+  document.getElementById("fSort").value = filter.sort;
+  const map = {fStatus:"status", fStar:"star", fSort:"sort"};
+  Object.keys(map).forEach(id=>document.getElementById(id).addEventListener("change", e=>{
+    filter[map[id]] = e.target.value; clearSelection(true); drawSheet();
+  }));
+
+  document.getElementById("allDone").onclick = async ()=>{
+    if(await ask("Mark all solved?", `This ticks all ${n} questions in ${ex.name} as solved. Questions already marked correct or wrong keep their result.`, "Mark all solved")){
+      for(let i=0;i<n;i++) arr[i]=setDone(arr[i],1);
+      afterBulk("All questions marked solved"); }
+  };
+  document.getElementById("allCorrect").onclick = async ()=>{
+    if(await ask("Mark all correct?", `This marks all ${n} questions in ${ex.name} as solved and correct. Any wrong answers you had recorded will be overwritten.`, "Mark all correct")){
+      for(let i=0;i<n;i++) arr[i]=setResult(setDone(arr[i],1),1);
+      afterBulk("All questions marked correct"); }
+  };
+  document.getElementById("clearEx").onclick = async ()=>{
+    if(await ask("Clear this exercise?", `This erases every tick, result, star and note in ${ex.name}. It cannot be undone.`, "Clear exercise", true)){
+      for(let i=0;i<n;i++) arr[i]=0;
+      for(let i=0;i<n;i++) delete S.n[key(sc,ch.no,code)+"."+i];
+      afterBulk("Exercise cleared"); }
+  };
+  drawSheet();
+}
+
+function afterBulk(msg){ markDirty(); drawSheet(); refreshStats(); refreshHwBadge(); toast(msg); }
+function refreshStats(){
+  const el = document.getElementById("exStats");
+  if(el && ctx) el.innerHTML = statLine(exStats(ctx.sc, ctx.ch, ctx.code));
+}
+
+function computeOrder(){
+  const {arr,n,hw} = ctx;
+  let idx=[]; for(let i=0;i<n;i++) idx.push(i);
+  idx = idx.filter(i=>{
+    const v=arr[i]||0, r=result(v);
+    if(filter.status==="todo" && isDone(v)) return false;
+    if(filter.status==="done" && !isDone(v)) return false;
+    if(filter.status==="correct" && r!==1) return false;
+    if(filter.status==="wrong" && r!==2) return false;
+    if(filter.status==="flag" && !isFlag(v)) return false;
+    if(filter.status==="hw" && !hw.has(i)) return false;
+    if(filter.star!=="all" && stars(v)!==Number(filter.star)) return false;
+    return true;
+  });
+  if(filter.sort==="starDesc") idx.sort((x,y)=> stars(arr[y]||0)-stars(arr[x]||0) || x-y);
+  if(filter.sort==="starAsc")  idx.sort((x,y)=> stars(arr[x]||0)-stars(arr[y]||0) || x-y);
+  return idx;
+}
+
+function drawSheet(){
+  const sheet = document.getElementById("sheet"); if(!sheet || !ctx) return;
+  ctx.hw = hwIndexSet(ctx.sc, ctx.ch.no, ctx.code);
+  order = computeOrder();
+  let html = `<div class="row head"><span>Q.no</span><span>Solved</span><span>Result</span><span>Your note</span><span>Review</span><span>Rating</span></div>`;
+  html += order.length
+    ? order.map(i=>rowHTML(i)).join("")
+    : `<div class="empty">No questions match this filter. Change <strong>Show</strong> or <strong>Stars</strong> above.</div>`;
+  sheet.innerHTML = html;
+}
+
+function rowHTML(i){
+  const v = ctx.arr[i]||0, r = result(v), st = stars(v);
+  const note = S.n[key(ctx.sc,ctx.ch.no,ctx.code)+"."+i] || "";
+  const cls = [isDone(v)?"done":"", sel.has(i)?"sel":"", ctx.hw.has(i)?"hw":""].filter(Boolean).join(" ");
+  return `<div class="row ${cls}" data-i="${i}">
+    <span class="qn" title="Drag down to select several questions">${String(i+1).padStart(3,"0")}${ctx.hw.has(i)?'<i>HW</i>':""}</span>
+    <span class="c-chk"><button class="check ${isDone(v)?"on":""}" data-act="done" aria-label="Question ${i+1} solved" aria-pressed="${!!isDone(v)}">✓</button></span>
+    <span class="c-bub bub">
+      <button class="c ${r===1?"on":""}" data-act="res" data-v="1" aria-label="Correct">✓</button>
+      <button class="w ${r===2?"on":""}" data-act="res" data-v="2" aria-label="Wrong">✕</button></span>
+    <span class="c-note"><input class="note" value="${esc(note)}" placeholder="Add a note" aria-label="Note for question ${i+1}"></span>
+    <span class="c-flag"><button class="flag ${isFlag(v)?"on":""}" data-act="flag" aria-pressed="${!!isFlag(v)}">RETRY</button></span>
+    <span class="c-stars stars">${[1,2,3].map(k=>`<button class="${st>=k?"on":""}" data-act="star" data-v="${k}" aria-label="${k} star">★</button>`).join("")}</span>
+  </div>`;
+}
+function redrawRow(i){
+  const el = document.querySelector(`.row[data-i="${i}"]`);
+  if(el) el.outerHTML = rowHTML(i);
+}
+
+/* clicks and typing inside the sheet */
+document.addEventListener("click", e=>{
+  const sheet = e.target.closest("#sheet"); if(!sheet || !ctx) return;
+  const btn = e.target.closest("[data-act]");
+  if(!btn){
+    // once a selection exists, tapping a row adds or removes it
+    const row = e.target.closest(".row:not(.head)");
+    if(row && sel.size){ const i=+row.dataset.i; sel.has(i)?sel.delete(i):sel.add(i); redrawRow(i); paintSelbar(); }
+    return;
+  }
+  const row = btn.closest(".row"), i = Number(row.dataset.i);
+  let v = ctx.arr[i]||0;
+  const act = btn.dataset.act;
+  if(act==="done"){ const now = !isDone(v); v = setDone(v,now); if(!now) v = setResult(v,0); }
+  if(act==="res"){ const w = Number(btn.dataset.v); v = result(v)===w ? setResult(v,0) : setResult(setDone(v,1),w); }
+  if(act==="flag") v = setFlag(v, !isFlag(v));
+  if(act==="star"){ const w = Number(btn.dataset.v); v = setStars(v, stars(v)===w ? 0 : w); }
+  ctx.arr[i]=v; redrawRow(i); markDirty(); refreshStats(); refreshHwBadge();
+});
+document.addEventListener("input", e=>{
+  if(!ctx || !e.target.classList.contains("note")) return;
+  const row = e.target.closest(".row"); if(!row) return;
+  const k = key(ctx.sc,ctx.ch.no,ctx.code)+"."+row.dataset.i;
+  if(e.target.value) S.n[k] = e.target.value; else delete S.n[k];
+  markDirty();
+});
+
+/* ============================================================
+   8. DRAG SELECTION
+   Mouse: press on a row and move. Touch: hold ~350ms, then move.
+   ============================================================ */
+let drag = null;
+
+document.addEventListener("pointerdown", e=>{
+  if(!ctx) return;
+  if(!e.target.closest("#sheet")) return;
+  if(e.target.closest("button,input,select,a")) return;
+  const row = e.target.closest(".row:not(.head)"); if(!row) return;
+  drag = {anchor:Number(row.dataset.i), active:false, timer:null,
+          x:e.clientX, y:e.clientY, cx:e.clientX, cy:e.clientY};
+  if(e.pointerType !== "mouse") drag.timer = setTimeout(()=>{ if(drag) startDrag(); }, 350);
+});
+
+function startDrag(){
+  drag.active = true;
+  sel = new Set([drag.anchor]);
+  const sh = document.getElementById("sheet");
+  sh.style.touchAction = "none"; sh.classList.add("dragging");
+  drawSheet(); paintSelbar();
+  requestAnimationFrame(dragLoop);
+}
+
+/* extend the selection to whatever row sits under the pointer */
+function extendTo(x,y){
+  const el = document.elementFromPoint(x,y);
+  const row = el && el.closest && el.closest(".row:not(.head)");
+  if(!row) return;
+  const a = order.indexOf(drag.anchor), b = order.indexOf(Number(row.dataset.i));
+  if(a<0 || b<0) return;
+  const next = new Set(order.slice(Math.min(a,b), Math.max(a,b)+1));
+  if(next.size === sel.size && [...next].every(i=>sel.has(i))) return;
+  sel = next;
+  document.querySelectorAll("#sheet .row:not(.head)").forEach(r=>r.classList.toggle("sel", sel.has(+r.dataset.i)));
+  paintSelbar();
+}
+
+/* hold near the top or bottom edge and the list keeps scrolling, so a
+   selection can run past the questions currently on screen */
+function dragLoop(){
+  if(!drag || !drag.active) return;
+  const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 52;
+  const h = window.innerHeight, edge = 56;
+  let d = 0;
+  if(drag.cy < top + edge) d = -Math.ceil((top + edge - drag.cy)/8);
+  else if(drag.cy > h - edge) d = Math.ceil((drag.cy - (h - edge))/8);
+  if(d){ window.scrollBy(0, d); extendTo(drag.cx, drag.cy); }
+  requestAnimationFrame(dragLoop);
+}
+
+document.addEventListener("pointermove", e=>{
+  if(!drag || !ctx) return;
+  drag.cx = e.clientX; drag.cy = e.clientY;
+  if(!drag.active){
+    if(Math.abs(e.clientY-drag.y) + Math.abs(e.clientX-drag.x) < 6) return;
+    if(e.pointerType === "mouse" && (e.buttons & 1)) startDrag();
+    else { clearTimeout(drag.timer); drag = null; }
+    if(!drag || !drag.active) return;
+  }
+  e.preventDefault();
+  extendTo(e.clientX, e.clientY);
+}, {passive:false});
+
+function endDrag(){
+  if(!drag) return;
+  clearTimeout(drag.timer);
+  const sh = document.getElementById("sheet");
+  if(sh){ sh.style.touchAction=""; sh.classList.remove("dragging"); }
+  drag = null;
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", endDrag);
+
+function clearSelection(quiet){ sel = new Set(); if(!quiet) drawSheet(); paintSelbar(); }
+function paintSelbar(){
+  const bar = document.getElementById("selbar");
+  if(!sel.size || !ctx){ bar.hidden = true; bar.innerHTML=""; return; }
+  bar.hidden = false;
+  bar.innerHTML = `<span class="n">${sel.size} selected</span>
+    <button class="tbtn" data-s="done">Mark solved</button>
+    <button class="tbtn" data-s="correct">Correct</button>
+    <button class="tbtn" data-s="wrong">Wrong</button>
+    <button class="tbtn" data-s="flag">Review</button>
+    <button class="tbtn" data-s="hw">Add to homework</button>
+    <button class="tbtn" data-s="clear">Clear</button>`;
+}
+document.getElementById("selbar").addEventListener("click", e=>{
+  const b = e.target.closest("[data-s]"); if(!b || !ctx) return;
+  const list = [...sel].sort((x,y)=>x-y);
+  const act = b.dataset.s;
+  if(act==="clear"){ clearSelection(); return; }
+  if(act==="hw"){
+    const it = {id:"h"+Date.now().toString(36)+Math.floor(Math.random()*999).toString(36),
+                s:ctx.sc, c:ctx.ch.no, e:ctx.code, r:toRange(list)};
+    S.h.push(it); markDirty(); clearSelection(true); drawSheet(); refreshHwBadge();
+    toast(list.length+" questions added to homework"); return;
+  }
+  list.forEach(i=>{
+    let v = ctx.arr[i]||0;
+    if(act==="done") v = setDone(v,1);
+    if(act==="correct") v = setResult(setDone(v,1),1);
+    if(act==="wrong") v = setResult(setDone(v,1),2);
+    if(act==="flag") v = setFlag(v,1);
+    ctx.arr[i]=v;
+  });
+  markDirty(); clearSelection(true); drawSheet(); refreshStats(); refreshHwBadge();
+  toast(list.length+" questions updated");
+});
+
+/* ============================================================
+   9. HOMEWORK DASHBOARD
+   ============================================================ */
+let hwForm = {s:"", m:"", c:"", e:"", open:false, r:""};
+
+function viewHomework(){
+  crumbs([{label:"Home",href:"#/"},{label:"Homework"}]);
+  const t = hwTotals();
+  app.innerHTML = `<div class="pagehead"><div class="eyebrow">Homework</div>
+      <h1>What you have to finish</h1>
+      <div class="stats"><span><span class="k">done</span> <b>${t.done}</b>/${t.total}</span>
+        <span><span class="k">left</span> <b>${t.left}</b></span>
+        <span><span class="k">lists</span> <b>${S.h.length}</b></span></div></div>
+    <div id="hwFormMount"></div>
+    <div id="hwTree"></div>`;
+  drawHwForm(); drawHwTree();
+}
+
+function drawHwForm(){
+  const mount = document.getElementById("hwFormMount"); if(!mount) return;
+  const sub = hwForm.s && subjOf(hwForm.s);
+  const mo  = sub && hwForm.m ? sub.modules[hwForm.m] : null;
+  const ch  = mo && hwForm.c ? mo.chapters.find(c=>String(c.no)===String(hwForm.c)) : null;
+  const exs = ch ? exList(hwForm.s, ch).filter(e=>qCount(hwForm.s,ch,e.code)>0) : [];
+  const ready = !!(sub && mo && ch && hwForm.e && exs.some(e=>e.code===hwForm.e));
+
+  const opt = (v,label,cur)=>`<option value="${esc(v)}"${String(cur)===String(v)?" selected":""}>${esc(label)}</option>`;
+  mount.innerHTML = `<div class="hwform">
+    <div class="blabel">Where is the homework from?</div>
+    <div class="hwrow">
+      <select id="hs"><option value="">Subject…</option>${TREE.order.map(sc=>opt(sc, subjOf(sc).name, hwForm.s)).join("")}</select>
+      <select id="hm" ${sub?"":"disabled"}><option value="">Module…</option>${sub?sub.order.map(m=>opt(m, sub.modules[m].name, hwForm.m)).join(""):""}</select>
+      <select id="hc" ${mo?"":"disabled"}><option value="">Chapter…</option>${mo?mo.chapters.map(c=>opt(c.no, c.no+". "+c.name, hwForm.c)).join(""):""}</select>
+      <select id="he" ${ch?"":"disabled"}><option value="">Exercise…</option>${exs.map(e=>opt(e.code, e.name, hwForm.e)).join("")}</select>
+      <button class="plusbtn" id="hplus" ${ready?"":"disabled"} title="Add a question range">+</button>
+    </div>
+    ${hwForm.open && ready ? `<div class="hwrow" style="margin-top:12px">
+        <span class="blabel" style="margin:0">Questions</span>
+        <input class="tin" id="hr" value="${esc(hwForm.r)}" placeholder="20-30, or 20-30, 45" style="flex:1;min-width:180px">
+        <button class="btn primary" id="hadd">Add homework</button>
+        <button class="btn" id="hcancel">Cancel</button></div>
+      <div class="msg bad" id="hmsg"></div>` : ""}
+  </div>`;
+
+  const on = (id, fn)=>{ const el=document.getElementById(id); if(el) el.onchange = fn; };
+  on("hs", e=>{ hwForm={s:e.target.value, m:"", c:"", e:"", open:false, r:""}; drawHwForm(); });
+  on("hm", e=>{ hwForm.m=e.target.value; hwForm.c=""; hwForm.e=""; hwForm.open=false; drawHwForm(); });
+  on("hc", e=>{ hwForm.c=e.target.value; hwForm.e=""; hwForm.open=false; drawHwForm(); });
+  on("he", e=>{ hwForm.e=e.target.value; hwForm.open=false; drawHwForm(); });
+  const plus = document.getElementById("hplus");
+  if(plus) plus.onclick = ()=>{ hwForm.open = true; drawHwForm(); document.getElementById("hr").focus(); };
+  const cancel = document.getElementById("hcancel");
+  if(cancel) cancel.onclick = ()=>{ hwForm.open=false; drawHwForm(); };
+  const add = document.getElementById("hadd");
+  if(add){
+    const submit = ()=>{
+      const raw = document.getElementById("hr").value;
+      hwForm.r = raw;
+      const chObj = chapOf(hwForm.s, hwForm.c);
+      const max = qCount(hwForm.s, chObj, hwForm.e);
+      const p = parseRange(raw, max);
+      if(p.error){ document.getElementById("hmsg").textContent = p.error; return; }
+      S.h.push({id:"h"+Date.now().toString(36)+Math.floor(Math.random()*999).toString(36),
+                s:hwForm.s, c:Number(hwForm.c), e:hwForm.e, r:toRange(p.list)});
+      hwForm.open=false; hwForm.r="";
+      markDirty(); viewHomework(); refreshHwBadge(); toast(p.list.length+" questions added to homework");
+    };
+    add.onclick = submit;
+    document.getElementById("hr").onkeydown = e=>{ if(e.key==="Enter") submit(); };
+  }
+}
+
+function drawHwTree(){
+  const mount = document.getElementById("hwTree"); if(!mount) return;
+  if(!S.h.length){
+    mount.innerHTML = `<div class="empty">No homework yet. Pick a location above, press + and type a question range like <strong>20-30</strong>.<br>You can also drag-select questions inside any exercise and send them here.</div>`;
+    return;
+  }
+  // group: subject -> module -> chapter -> exercise
+  const tree = {};
+  S.h.forEach(it=>{
+    const r = hwResolve(it);
+    const sKey = it.s;
+    const mKey = r.missing ? "?" : String(r.ch.mod);
+    const cKey = String(it.c), eKey = it.e;
+    ((((tree[sKey] = tree[sKey]||{})[mKey] = tree[sKey][mKey]||{})[cKey] = tree[sKey][mKey][cKey]||{})[eKey] =
+      tree[sKey][mKey][cKey][eKey] || []).push(it);
+  });
+
+  const twisty = k => `<button class="twisty" data-t="${esc(k)}">${S.closed[k]?"▸":"▾"}</button>`;
+  let html = "";
+  for(const sc of Object.keys(tree)){
+    const sub = subjOf(sc);
+    const sk = "s:"+sc;
+    html += `<div class="node">${twisty(sk)}<span class="lv">Subject</span><span class="nm">${esc(sub?sub.name:"(removed)")}</span></div>`;
+    if(S.closed[sk]) continue;
+    html += `<div class="branch">`;
+    for(const mk of Object.keys(tree[sc])){
+      const mo = sub && sub.modules[mk];
+      const mkey = "m:"+sc+":"+mk;
+      html += `<div class="node">${twisty(mkey)}<span class="lv">Module</span><span class="nm">${esc(mo?mo.name:"Unknown module")}</span></div>`;
+      if(S.closed[mkey]) continue;
+      html += `<div class="branch">`;
+      for(const ck of Object.keys(tree[sc][mk])){
+        const ch = chapOf(sc, ck);
+        const ckey = "c:"+sc+":"+ck;
+        html += `<div class="node">${twisty(ckey)}<span class="lv">Chapter</span><span class="nm">${esc(ch?(ch.no+". "+ch.name):"Chapter "+ck+" (removed)")}</span></div>`;
+        if(S.closed[ckey]) continue;
+        html += `<div class="branch">`;
+        for(const ek of Object.keys(tree[sc][mk][ck])){
+          tree[sc][mk][ck][ek].forEach(it=>{ html += hwItemHTML(it); });
+        }
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  mount.innerHTML = html;
+}
+
+function hwItemHTML(it){
+  const st = hwStats(it), r = st.r;
+  if(r.missing){
+    return `<div class="hwitem warnbox"><div class="hwhead">
+      <span class="loc">This homework points somewhere that no longer exists</span>
+      <button class="x" data-del="${it.id}" title="Remove">×</button></div>
+      <div class="warntext">Questions ${esc(it.r)} — the chapter or exercise was removed.</div></div>`;
+  }
+  const a = S.d[key(it.s,it.c,it.e)] || [];
+  const chips = r.list.map(i=>{
+    const v = a[i]||0, res = result(v);
+    const cls = res===1?"c":res===2?"w":isDone(v)?"d":"";
+    return `<button class="chip ${cls}" data-hw="${it.id}" data-i="${i}">${i+1}</button>`;
+  }).join("");
+  return `<div class="hwitem ${r.over?"warnbox":""}">
+    <div class="hwhead">
+      <a class="loc" href="#/${it.s}/${r.ch.mod}/${it.c}/${it.e}">${esc(r.ex.name)}</a>
+      <span class="rng">Q ${esc(it.r)}</span>
+      <span class="prog">${st.done}/${st.total} done</span>
+      <button class="x" data-del="${it.id}" title="Remove">×</button></div>
+    <div class="chips">${chips}</div>
+    ${r.over ? `<div class="warntext">${r.over} question${r.over>1?"s":""} in this range no longer exist — ${esc(r.ex.name)} now has ${r.n}.</div>` : ""}
+  </div>`;
+}
+
+/* homework interactions */
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-t]");
+  if(t){ const k=t.dataset.t; S.closed[k] = !S.closed[k]; drawHwTree(); return; }
+
+  const del = e.target.closest("[data-del]");
+  if(del){
+    S.h = S.h.filter(x=>x.id !== del.dataset.del);
+    markDirty(); viewHomework(); refreshHwBadge(); toast("Homework removed"); return;
+  }
+  const chip = e.target.closest("[data-hw]");
+  if(chip){
+    const it = S.h.find(x=>x.id===chip.dataset.hw); if(!it) return;
+    const i = Number(chip.dataset.i);
+    const n = qCount(it.s, chapOf(it.s, it.c), it.e);
+    const arr = arrFor(it.s, it.c, it.e, n);
+    const now = !isDone(arr[i]||0);
+    arr[i] = setDone(arr[i]||0, now);
+    if(!now) arr[i] = setResult(arr[i], 0);
+    markDirty(); viewHomework(); refreshHwBadge(); return;
+  }
+});
+
+/* ============================================================
+   10. ADDING YOUR OWN SUBJECTS, MODULES, CHAPTERS, EXERCISES
+   ============================================================ */
+const SUB_CODES = "abcdefghijklmnopqrstuvwxyz";
+const EX_CODES  = "BDEFGHJKLNOPQRSTUVWXYZbcdefghijklmnopqrstuvwxyz";
+
+function freeSubjectCode(){
+  for(const c of SUB_CODES) if(!TREE.subjects[c]) return c;
+  return null;
+}
+function freeExCode(sc, ch){
+  const used = new Set(ch.exs.map(e=>e.code));
+  for(const c of EX_CODES) if(!used.has(c)) return c;
+  return null;
+}
+const nextChapterNo = sc => allChapters(sc).reduce((m,c)=>Math.max(m,c.no), 0) + 1;
+const nextModuleId  = sc => { const s=subjOf(sc); return s.order.reduce((m,x)=>Math.max(m,Number(x)),0) + 1; };
+
+/* every progress key belonging to one chapter — matched exactly, so
+   chapter 1 never sweeps up chapter 12 */
+function keysOfChapter(sc, no){
+  const p = String(no);
+  return Object.keys(S.d).filter(k => k[0]===sc && k.slice(1,-1)===p);
+}
+function dropKeys(keys){
+  keys.forEach(k=>{ delete S.d[k];
+    Object.keys(S.n).forEach(nk=>{ if(nk.slice(0, nk.lastIndexOf(".")) === k) delete S.n[nk]; }); });
+}
+
+const fab = document.getElementById("fab"), fabmenu = document.getElementById("fabmenu");
+function closeFabMenu(){ fabmenu.hidden = true; }
+fab.addEventListener("click", e=>{ e.stopPropagation(); fabmenu.hidden ? openFabMenu() : closeFabMenu(); });
+document.addEventListener("click", e=>{ if(!e.target.closest("#fabmenu,#fab")) closeFabMenu(); });
+
+function openFabMenu(){
+  const v = VIEW; let items = [];
+  if(v.name==="home") items = [["Add a subject", addSubject]];
+  else if(v.name==="hw") items = [["Add homework", ()=>{ document.getElementById("hs")?.focus(); }]];
+  else if(v.name==="subject"){
+    const sub = subjOf(v.s);
+    items = [["Add a module", ()=>addModule(v.s)], ["Rename subject", ()=>renameThing("s:"+v.s, sub.name, "Subject name")]];
+    if(sub.custom) items.push(["Delete this subject", ()=>deleteSubject(v.s), true]);
+  }
+  else if(v.name==="module"){
+    const mo = modOf(v.s, v.m);
+    items = [["Add a chapter", ()=>addChapter(v.s, v.m)], ["Rename module", ()=>renameThing("m:"+v.s+":"+v.m, mo.name, "Module name")]];
+    if(mo.custom) items.push(["Delete this module", ()=>deleteModule(v.s, v.m), true]);
+  }
+  else if(v.name==="chapter"){
+    const ch = chapOf(v.s, v.c);
+    items = [["Add an exercise", ()=>addExercise(v.s, v.c)], ["Rename chapter", ()=>renameThing("c:"+v.s+":"+v.c, ch.name, "Chapter name")]];
+    if(ch.custom) items.push(["Delete this chapter", ()=>deleteChapter(v.s, v.c), true]);
+  }
+  else if(v.name==="exercise"){
+    const ch = chapOf(v.s, v.c), ex = exOf(v.s, ch, v.e);
+    items = [["Change question count", ()=>changeCount(v.s, v.c, v.e)],
+             ["Rename exercise", ()=>renameThing("e:"+v.s+":"+v.c+":"+v.e, ex.name, "Exercise name")]];
+    if(ex.custom) items.push(["Delete this exercise", ()=>deleteExercise(v.s, v.c, v.e), true]);
+  }
+  fabmenu.innerHTML = `<div class="grp">Add or edit</div>` + items.map((it,i)=>
+    `<button data-i="${i}"${it[2]?' class="danger"':""}>${esc(it[0])}</button>`).join("");
+  fabmenu.hidden = false;
+  fabmenu.querySelectorAll("button").forEach(b=>b.onclick = ()=>{ closeFabMenu(); items[+b.dataset.i][1](); });
+}
+
+/* prompt dialog returning a string, or null when cancelled */
+function prompt2(title, body, label, value, opts){
+  opts = opts || {};
+  return new Promise(res=>{
+    onEsc = ()=>res(null);
+    openModal(`<h3>${esc(title)}</h3>${body?`<p>${esc(body)}</p>`:""}
+      <div class="block"><div class="blabel">${esc(label)}</div>
+      <input type="${opts.number?"number":"text"}" id="pv" value="${esc(value||"")}" ${opts.number?'min="1" max="2000"':""}></div>
+      <div class="msg bad" id="pmsg"></div>
+      <div class="acts"><button class="btn" id="pNo">Cancel</button>
+      <button class="btn primary" id="pYes">${esc(opts.ok||"Add")}</button></div>`);
+    const input = modal.querySelector("#pv"); input.focus(); input.select();
+    const done = ()=>{
+      const val = input.value.trim();
+      if(!val){ modal.querySelector("#pmsg").textContent = "Type a name first."; return; }
+      closeModal(); res(val);
+    };
+    modal.querySelector("#pNo").onclick = ()=>{ closeModal(); res(null); };
+    modal.querySelector("#pYes").onclick = done;
+    input.onkeydown = e=>{ if(e.key==="Enter") done(); };
+  });
+}
+
+async function addSubject(){
+  const code = freeSubjectCode();
+  if(!code) return toast("You have reached the limit of extra subjects");
+  const name = await prompt2("Add a subject", "It starts empty — you can add modules inside it.", "Subject name", "", {ok:"Add subject"});
+  if(!name) return;
+  S.x.subs.push({code, name, accent:PALETTE[S.x.subs.length % PALETTE.length]});
+  S.x.mods[code] = [{id:1, name:"Module 1"}];
+  buildTree(); markDirty(); location.hash = "#/"+code; render(); toast("Subject added");
+}
+async function addModule(sc){
+  const name = await prompt2("Add a module", "", "Module name", "Module "+nextModuleId(sc), {ok:"Add module"});
+  if(!name) return;
+  (S.x.mods[sc] = S.x.mods[sc]||[]).push({id:nextModuleId(sc), name});
+  buildTree(); markDirty(); render(); toast("Module added");
+}
+async function addChapter(sc, m){
+  const name = await prompt2("Add a chapter", "", "Chapter name", "", {ok:"Add chapter"});
+  if(!name) return;
+  const no = nextChapterNo(sc);
+  (S.x.chs[sc+"|"+m] = S.x.chs[sc+"|"+m]||[]).push({no, name});
+  buildTree(); markDirty(); render(); toast("Chapter added");
+}
+async function addExercise(sc, cno){
+  const ch = chapOf(sc, cno);
+  const code = freeExCode(sc, ch);
+  if(!code) return toast("This chapter cannot hold more exercises");
+  const name = await prompt2("Add an exercise", "You will set the number of questions when you open it.", "Exercise name", "", {ok:"Add exercise"});
+  if(!name) return;
+  (S.x.exs[sc+"|"+cno] = S.x.exs[sc+"|"+cno]||[]).push({code, name});
+  buildTree(); markDirty(); render(); toast("Exercise added");
+}
+async function renameThing(k, current, label){
+  const name = await prompt2("Rename", "", label, current, {ok:"Rename"});
+  if(!name) return;
+  const parts = k.split(":");
+  if(parts[0]==="s"){ const cs = S.x.subs.find(x=>x.code===parts[1]); if(cs) cs.name = name; else S.x.ren[k]=name; }
+  else if(parts[0]==="m"){ const cm = (S.x.mods[parts[1]]||[]).find(x=>String(x.id)===parts[2]); if(cm) cm.name = name; else S.x.ren[k]=name; }
+  else if(parts[0]==="c"){
+    let hit=null; Object.keys(S.x.chs).forEach(kk=>{ if(kk.split("|")[0]===parts[1]) (S.x.chs[kk]||[]).forEach(c=>{ if(String(c.no)===parts[2]) hit=c; }); });
+    if(hit) hit.name = name; else S.x.ren[k]=name;
+  }
+  else if(parts[0]==="e"){
+    const ce = (S.x.exs[parts[1]+"|"+parts[2]]||[]).find(x=>x.code===parts[3]);
+    if(ce) ce.name = name; else S.x.ren[k]=name;
+  }
+  buildTree(); markDirty(); render(); toast("Renamed");
+}
+async function changeCount(sc, cno, code){
+  const ch = chapOf(sc, cno), cur = qCount(sc, ch, code);
+  const raw = await prompt2("How many questions?", "The table will grow or shrink to match.", "Number of questions", String(cur), {number:true, ok:"Save"});
+  if(raw === null) return;
+  const v = parseInt(raw,10);
+  if(!(v>0 && v<=2000)) return toast("Type a number between 1 and 2000");
+  if(v < cur){
+    const ok = await ask("Shrink this exercise?", `Questions ${v+1} to ${cur} will be removed along with anything you recorded on them.`, "Shrink", true);
+    if(!ok) return;
+  }
+  S.x.cnt[key(sc,cno,code)] = v;
+  arrFor(sc, cno, code, v);
+  buildTree(); markDirty(); render(); toast("Now "+v+" questions");
+}
+async function deleteSubject(sc){
+  const sub = subjOf(sc);
+  if(!await ask("Delete "+sub.name+"?", "Every chapter, exercise and tick inside it goes too. This cannot be undone.", "Delete subject", true)) return;
+  S.x.subs = S.x.subs.filter(x=>x.code!==sc);
+  delete S.x.mods[sc];
+  Object.keys(S.x.chs).forEach(k=>{ if(k.split("|")[0]===sc) delete S.x.chs[k]; });
+  Object.keys(S.x.exs).forEach(k=>{ if(k.split("|")[0]===sc) delete S.x.exs[k]; });
+  Object.keys(S.x.cnt).forEach(k=>{ if(k[0]===sc) delete S.x.cnt[k]; });
+  dropKeys(Object.keys(S.d).filter(k=>k[0]===sc));
+  S.h = S.h.filter(it=>it.s!==sc);
+  buildTree(); markDirty(); location.hash="#/"; render(); toast("Subject deleted");
+}
+async function deleteModule(sc, m){
+  const mo = modOf(sc,m);
+  if(!await ask("Delete "+mo.name+"?", "Its chapters and everything recorded in them go too.", "Delete module", true)) return;
+  mo.chapters.forEach(c=>{ dropKeys(keysOfChapter(sc, c.no)); S.h = S.h.filter(it=>!(it.s===sc && String(it.c)===String(c.no))); });
+  S.x.mods[sc] = (S.x.mods[sc]||[]).filter(x=>String(x.id)!==String(m));
+  delete S.x.chs[sc+"|"+m];
+  buildTree(); markDirty(); location.hash="#/"+sc; render(); toast("Module deleted");
+}
+async function deleteChapter(sc, cno){
+  const ch = chapOf(sc, cno);
+  if(!await ask("Delete "+ch.name+"?", "Everything you recorded in this chapter goes too.", "Delete chapter", true)) return;
+  Object.keys(S.x.chs).forEach(k=>{ if(k.split("|")[0]===sc) S.x.chs[k] = S.x.chs[k].filter(c=>String(c.no)!==String(cno)); });
+  delete S.x.exs[sc+"|"+cno];
+  dropKeys(keysOfChapter(sc, cno));
+  S.h = S.h.filter(it=>!(it.s===sc && String(it.c)===String(cno)));
+  const m = ch.mod;
+  buildTree(); markDirty(); location.hash="#/"+sc+"/"+m; render(); toast("Chapter deleted");
+}
+async function deleteExercise(sc, cno, code){
+  const ch = chapOf(sc,cno), ex = exOf(sc,ch,code);
+  if(!await ask("Delete "+ex.name+"?", "Everything you recorded in it goes too.", "Delete exercise", true)) return;
+  S.x.exs[sc+"|"+cno] = (S.x.exs[sc+"|"+cno]||[]).filter(e=>e.code!==code);
+  dropKeys([key(sc,cno,code)]);
+  delete S.x.cnt[key(sc,cno,code)];
+  S.h = S.h.filter(it=>!(it.s===sc && String(it.c)===String(cno) && it.e===code));
+  buildTree(); markDirty(); location.hash="#/"+sc+"/"+ch.mod+"/"+cno; render(); toast("Exercise deleted");
+}
+
+/* ============================================================
+   11. MODALS, TOAST, SAVE PANEL
+   ============================================================ */
+const veil = document.getElementById("veil"), modal = document.getElementById("modal");
+let onEsc = null;
+function openModal(html){ modal.innerHTML = html; veil.hidden = false;
+  const f = modal.querySelector("input,textarea,button"); if(f) f.focus(); }
+function closeModal(){ veil.hidden = true; onEsc = null; }
+veil.addEventListener("click", e=>{ if(e.target===veil){ if(onEsc) onEsc(false); closeModal(); } });
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){
+    if(!veil.hidden){ if(onEsc) onEsc(false); closeModal(); return; }
+    if(!fabmenu.hidden){ closeFabMenu(); return; }
+    if(sel.size) clearSelection();
+  }
+});
+function ask(title, body, okLabel, danger){
+  return new Promise(res=>{
+    onEsc = res;
+    openModal(`<h3>${esc(title)}</h3><p>${esc(body)}</p>
+      <div class="acts"><button class="btn" id="mNo">Cancel</button>
+      <button class="btn ${danger?"danger":"primary"}" id="mYes">${esc(okLabel)}</button></div>`);
+    modal.querySelector("#mNo").onclick = ()=>{ closeModal(); res(false); };
+    modal.querySelector("#mYes").onclick = ()=>{ closeModal(); res(true); };
+  });
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(t._t); t._t = setTimeout(()=>{ t.hidden = true; }, 2200);
+}
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch(e){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    let ok=false; try{ ok = document.execCommand("copy"); }catch(_){}
+    document.body.removeChild(ta); return ok;
+  }
+}
+
+document.getElementById("openSave").addEventListener("click", openSave);
+function openSave(){
+  const code = makeCode();
+  const saved = S.savedAt ? "Loaded from a code saved on " + S.savedAt.toLocaleString() : "";
+  openModal(`
+    <h3>Save or load your progress</h3>
+    <p>Your code is the whole save file — ticks, notes, homework and anything you added yourself. Keep it somewhere you will find it again.</p>
+    <div class="block"><div class="blabel">Your code right now</div>
+      <textarea id="outCode" rows="5" readonly>${esc(code)}</textarea>
+      <div class="acts" style="margin-top:8px"><button class="btn primary" id="doCopy">Copy code</button></div></div>
+    <div class="block"><div class="blabel">Load a saved code</div>
+      <textarea id="inCode" rows="4" placeholder="Paste your code here"></textarea>
+      <div class="msg" id="loadMsg">${esc(saved)}</div>
+      <div class="acts" style="margin-top:8px"><button class="btn" id="doLoad">Load code</button></div></div>
+    <div class="acts"><button class="btn" id="doClose">Close</button></div>`);
+  modal.querySelector("#outCode").addEventListener("focus", e=>e.target.select());
+  modal.querySelector("#doCopy").onclick = async e=>{
+    const ok = await copyText(code);
+    if(ok){ markClean(); toast("Code copied"); e.target.textContent="Copied"; setTimeout(()=>{e.target.textContent="Copy code";},1600); }
+    else { modal.querySelector("#outCode").select(); toast("Select the code and copy it manually"); }
+  };
+  modal.querySelector("#doClose").onclick = closeModal;
+  modal.querySelector("#doLoad").onclick = async ()=>{
+    const msg = modal.querySelector("#loadMsg");
+    let parsed;
+    try{ parsed = readCode(modal.querySelector("#inCode").value); }
+    catch(err){ msg.className="msg bad"; msg.textContent = err.message; return; }
+    let done=0; Object.keys(parsed.d).forEach(k=>parsed.d[k].forEach(v=>{ if(isDone(v)) done++; }));
+    const ok = await ask("Load this code?",
+      `It was saved on ${parsed.at.toLocaleString()} and holds ${done} solved questions${parsed.h.length?" and "+parsed.h.length+" homework lists":""}. Loading it replaces everything currently on this page.`,
+      "Load code");
+    if(!ok) return;
+    S.d = parsed.d; S.n = parsed.n; S.x = parsed.x; S.h = parsed.h; S.savedAt = parsed.at;
+    buildTree(); markClean(); LS.set("qlog.backup", makeCode());
+    closeModal(); location.hash="#/"; render(); toast("Progress loaded");
+  };
+}
+
+/* ============================================================
+   12. START
+   ============================================================ */
+(function start(){
+  sizeTopbar();
+  const backup = LS.get("qlog.backup");
+  if(backup){
+    try{ const p = readCode(backup); S.d=p.d; S.n=p.n; S.x=p.x; S.h=p.h; S.savedAt=p.at; }catch(e){}
+  }
+  buildTree();
+  render();
+})();
+
+window.addEventListener("beforeunload", e=>{ if(S.dirty){ e.preventDefault(); e.returnValue=""; } });
+</script>
+</body>
+</html>
